@@ -1,0 +1,8 @@
+# Global patterns
+*.swp
+.DS_STORE
+nimcache/
+
+# Full paths
+/nakefile
+/tests/t1
