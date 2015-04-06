@@ -1,5 +1,6 @@
-# A MsgArena that manages getting and returning messages from memory
-# The MsgArena is thread safe and shared so they maybe used across threads.
+# A MsgArena manages getting and returning messages from memory
+# The MsgArena is thread safe and shared so they maybe used
+# across threads.
 import locks, strutils
 
 const
@@ -26,15 +27,17 @@ proc newMsg(cmdVal: int32, dataSize: int): MsgPtr =
 proc getMsgArrayPtr(ma: MsgArenaPtr): ptr array[msgArenaSize, MsgPtr] =
   ### Assume ma.lock is acquired
   if ma.msgArray == nil:
-    ma.msgArray = cast[ptr array[msgArenaSize, MsgPtr]](allocShared(sizeof(MsgPtr) * msgArenaSize))
+    ma.msgArray = cast[ptr array[msgArenaSize, MsgPtr]]
+                    (allocShared(sizeof(MsgPtr) * msgArenaSize))
   result = ma.msgArray
 
 ## public procs
 
 proc `$`*(msg: MsgPtr): string =
   result = if msg == nil: "<nil>" else: "{msg:0x" &
-        toHex(cast[int](msg), sizeof(int)) &
-        " next=0x" & toHex(cast[int](msg.next), sizeof(int)) &
+        toHex(cast[int](msg), sizeof(int)*2) &
+        (if msg.next == nil: " next=<nil>" else:
+          " next=0x" & toHex(cast[int](msg.next), sizeof(int)*2)) &
         " cmd=" & $msg.cmd & "}"
 
 proc `$`*(ma: MsgArenaPtr): string =
