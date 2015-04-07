@@ -1,6 +1,5 @@
-# A MsgArena manages getting and returning messages from memory
-# The MsgArena is thread safe and shared so they maybe used
-# across threads.
+## The MsgArena manages getting and returning message from memory
+## in a thread safe manner and so maybe shared by multipel threads.
 import locks, strutils
 
 const
@@ -19,19 +18,29 @@ type
 
   MsgArenaPtr* = ptr MsgArena
 
+# Forward declarations
+
+proc `$`*(msg: MsgPtr): string
+proc `$`*(ma: MsgArenaPtr): string
+
+
 # private procs
+
 proc newMsg(cmdVal: int32, dataSize: int): MsgPtr =
-  result = cast[MsgPtr](alloc(sizeof(Msg)))
+  ## Allocate a new Msg.
+  ## TODO: Allow dataSize other than zero
+  result = cast[MsgPtr](allocShared(sizeof(Msg)))
   result.cmd = cmdVal
+  result.next = nil
 
 proc getMsgArrayPtr(ma: MsgArenaPtr): ptr array[msgArenaSize, MsgPtr] =
-  ### Assume ma.lock is acquired
+  ## Assume ma.lock is acquired
   if ma.msgArray == nil:
     ma.msgArray = cast[ptr array[msgArenaSize, MsgPtr]]
-                    (allocShared(sizeof(MsgPtr) * msgArenaSize))
+                    (allocShared0(sizeof(MsgPtr) * msgArenaSize))
   result = ma.msgArray
 
-## public procs
+# public procs
 
 proc `$`*(msg: MsgPtr): string =
   result = if msg == nil: "<nil>" else: "{msg:0x" &
@@ -50,7 +59,7 @@ proc `$`*(ma: MsgArenaPtr): string =
       if ma.msgArray != nil:
         for idx in 0..ma.msgCount-1:
           # probably should do a sequence ??
-          msgStr &= $(cast[MsgPtr](ma.msgArray[idx]))
+          msgStr &= $ma.msgArray[idx]
           if idx < ma.msgCount-1:
             msgStr &= ", "
       msgStr &= "}"
@@ -67,7 +76,7 @@ proc delMsgArena*(ma: MsgArenaPtr) =
   block:
     if ma.msgArray != nil:
       for idx in 0..ma.msgCount-1:
-        var msg = cast[MsgPtr](ma.msgArray[idx])
+        var msg = ma.msgArray[idx]
         deallocShared(msg)
       deallocShared(ma.msgArray)
   ma.lock.release()
@@ -80,10 +89,10 @@ proc getMsg*(ma: MsgArenaPtr, cmd: int32, dataSize: int): MsgPtr =
     var msgA = ma.getMsgArrayPtr()
     if ma.msgCount > 0:
       ma.msgCount -= 1
-      result = cast[MsgPtr](msgA[ma.msgCount])
+      result = msgA[ma.msgCount]
       result.cmd = cmd
     else:
-      result = cast[MsgPtr](newMsg(cmd, dataSize))
+      result = newMsg(cmd, dataSize)
   ma.lock.release()
 
 proc retMsg*(ma: MsgArenaPtr, msg: MsgPtr) =
@@ -91,7 +100,7 @@ proc retMsg*(ma: MsgArenaPtr, msg: MsgPtr) =
   block:
     var msgA = ma.getMsgArrayPtr()
     if ma.msgCount < msgA[].len():
-      msgA[ma.msgCount] = cast[MsgPtr](msg)
+      msgA[ma.msgCount] = msg
       ma.msgCount += 1
     else:
       doAssert(ma.msgCount < msgA[].len())
