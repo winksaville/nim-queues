@@ -1,4 +1,4 @@
-import msgarena, msgqueue
+import msgarena, msgqueue, benchmark
 
 echo "t1.nim"
 
@@ -20,3 +20,23 @@ echo "mq1 after adding msg1", mq1
 mq1.addTail(msg2)
 echo "mq1 after adding msg2", mq1
 
+suite "bm msgareana", 0.0:
+  var
+    ma: MsgArenaPtr
+    msg: MsgPtr
+    ts: TestStats
+
+  setup:
+    ma = newMsgArena()
+    echo "setup: ma=", ma
+  teardown:
+    echo "teardown: ma=", ma
+    ma.delMsgArena()
+
+  test "test1", 1, ts:
+    msg = ma.getMsg(1, 0)
+    echo "ma=", ma
+    echo "msg=", msg
+    ma.retMsg(msg)
+    echo "ma=", ma
+    echo "msg=", msg
