@@ -1,19 +1,26 @@
 import nake
 
 var
-  buildArtifacts = @["nimcache", "tests/nimcache", "tests/t1"]
+  buildArtifacts = @["nimcache", "tests/nimcache", "tests/t1", "tests/t2"]
   buildFlags = "-d:release --verbosity:1 --hints:off --warnings:off --threads:on --embedsrc --lineDir:on"
+  #buildFlags = "-d:release --verbosity:1 --hints:off --warnings:off --threads:on --embedsrc --lineDir:on"
   #buildFlags = "-d:release --verbosity:3 --hints:off --warnings:on --threads:on --embedsrc --lineDir:on --parallelBuild:1"
 
   docFlags = ""
   docFiles: seq[string] = @[]
   exampleFiles: seq[string] = @[]
 
-task defaultTask, "Clean, Compile and run the tests":
+task "t1", "Clean, Compile and run the tests":
   runTask "clean"
   runTask "docs"
-  runTask "build-tests"
-  runTask "run-tests"
+  runTask "build-t1"
+  runTask "run-t1"
+
+task "t2", "Clean, Compile and run the tests":
+  runTask "clean"
+  runTask "docs"
+  runTask "build-t2"
+  runTask "run-t2"
 
 task "docs", "Buiild the documents":
   for file in docFiles:
@@ -28,13 +35,22 @@ task "exmpl", "Build and run the exmpl":
       echo "error compiling"
       quit 1
 
-task "build-tests", "Build the tests":
+task "build-t1", "Build t1":
   if not shell(nimExe, "c",  buildFlags, "tests/t1.nim"):
     echo "error compiling"
     quit 1
 
-task "run-tests", "Run the tests":
+task "run-t1", "Run t1":
   discard shell("tests/t1")
+
+task "build-t2", "Build t2":
+  if not shell(nimExe, "c",  buildFlags, "tests/t2.nim"):
+    echo "error compiling"
+    quit 1
+
+task "run-t2", "Run t2":
+  discard shell("tests/t2")
+
 
 task "clean", "clean build artifacts":
   proc removeFileOrDir(file) =

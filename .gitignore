@@ -6,3 +6,4 @@ nimcache/
 # Full paths
 /nakefile
 /tests/t1
+/tests/t2

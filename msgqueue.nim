@@ -1,13 +1,7 @@
 # Thread safe Msg Queue
 import msgarena, locks, strutils
 
-#when not defined(release):
-#  const DBG = true
-#else:
-#  const DBG = false
-
 const DBG = false
-echo "msgqueue: DBG=", DBG
 
 type
   MsgQueuePtr* = ptr MsgQueue
