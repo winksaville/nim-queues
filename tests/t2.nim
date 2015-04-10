@@ -9,7 +9,7 @@
 # Right now I tell one looper to finish and use processingDone
 # to signal the done condition. Actually processingDone needs
 # to get signaled by each looper than then tell the master.
-import msglooper, msgarena, msgqueue, benchmark, os, locks
+import msg, msgarena, msgqueue, msglooper, benchmark, os, locks
 
 
 suite "msglooper", 0.25:

@@ -1,18 +1,17 @@
 # Thread safe Msg Queue
-import msgarena, locks, strutils
+import msg, msgarena, locks, strutils
 
 const DBG = false
 
 type
+  MsgQueue* = object of Queue
+    name*: string
+    ownsCondAndLock*: bool
+    cond*: ptr TCond
+    lock*: ptr TLock
+    head*: MsgPtr
+    tail*: MsgPtr
   MsgQueuePtr* = ptr MsgQueue
-
-  MsgQueue* = object
-    name: string
-    ownsCondAndLock: bool
-    cond: ptr TCond
-    lock: ptr TLock
-    head: MsgPtr
-    tail: MsgPtr
 
 proc `$`*(mq: MsgQueuePtr): string =
   result =
@@ -71,6 +70,9 @@ proc delMsgQueue*(mq: MsgQueuePtr) =
   deallocShared(mq)
   when DBG: dbg "-"
 
+proc delMsgQueue*(qp: QueuePtr) =
+  delMsgQueue(cast[MsgQueuePtr](qp))
+
 proc emptyNoLock*(mq: MsgQueuePtr): bool {.inline.} =
   ## Assume a lock is held outside
   result = mq.head == nil
@@ -97,7 +99,8 @@ proc rmvHeadNonBlockingNoLock*(mq: MsgQueuePtr): MsgPtr =
       result = mq.rmvHeadNoLock()
   when DBG: dbg "- msg=" & $result
 
-proc addTail*(mq: MsgQueuePtr, msg: MsgPtr) =
+proc addTail*(q: QueuePtr, msg: MsgPtr) =
+  var mq = cast[MsgQueuePtr](q)
   proc dbg(s:string) =
     echo mq.name & ".addTail:" & s
   when DBG: dbg "+ msg=" & $msg
@@ -119,7 +122,8 @@ proc addTail*(mq: MsgQueuePtr, msg: MsgPtr) =
   when DBG: echo "mq=", mq
   when DBG: dbg "- msg=" & $msg
 
-proc rmvHead*(mq: MsgQueuePtr): MsgPtr =
+proc rmvHead*(q: QueuePtr): MsgPtr =
+  var mq = cast[MsgQueuePtr](q)
   proc dbg(s:string) =
     echo mq.name & ".rmvHead:" & s
   when DBG: dbg "+"

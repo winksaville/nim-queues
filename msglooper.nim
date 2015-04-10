@@ -1,5 +1,5 @@
 import os, locks
-import msgqueue, msgarena
+import msg, msgqueue, msgarena
 
 #when not defined(release):
 #  const DBG = true
@@ -128,7 +128,8 @@ proc delMsgLooper*(ml: MsgLooperPtr) =
 
   when DBG: dbg "DOES NOTHING YET"
 
-proc addProcessMsg*(ml: MsgLooperPtr, pm: ProcessMsg, mq: MsgQueuePtr) =
+proc addProcessMsg*(ml: MsgLooperPtr, pm: ProcessMsg, qp: QueuePtr) =
+  var mq = cast[MsgQueuePtr](qp)
   proc dbg(s:string) =
     echo ml.name & ".addMsgProcessor:" & s
   when DBG: dbg "+"

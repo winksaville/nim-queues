@@ -1,7 +1,7 @@
 # The performance comments below where using my Ubuntu linux desktop
 # compiled with nim 0.10.3 sha1: 4b98768a and buildFlags:
 # "-d:release --verbosity:1 --hints:off --warnings:off --threads:on --embedsrc --lineDir:on"
-import msgarena, msgqueue, benchmark
+import msg, msgarena, msgqueue, benchmark
 
 
 # Having the warmup between 0 .. 0.25 seems to work best.
@@ -33,5 +33,5 @@ suite "bm msgareana", 0.25:
   test "test1", 1.0, tsa:
     msg = ma.getMsg(1, 0)
     mq.addTail(msg)
-    msg = mq.rmvHead
+    msg = mq.rmvHead()
     ma.retMsg(msg)

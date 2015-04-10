@@ -1,16 +1,11 @@
 ## The MsgArena manages getting and returning message from memory
 ## in a thread safe manner and so maybe shared by multipel threads.
-import locks, strutils
+import msg, locks, strutils
 
 const
   msgArenaSize = 32
 
 type
-  MsgPtr* = ptr Msg
-  Msg* = object of RootObj
-    next*: MsgPtr
-    cmd*: int32
-
   MsgArena* = object
     lock: TLock
     msgCount: int
@@ -20,7 +15,6 @@ type
 
 # Forward declarations
 
-proc `$`*(msg: MsgPtr): string
 proc `$`*(ma: MsgArenaPtr): string
 
 
@@ -41,13 +35,6 @@ proc getMsgArrayPtr(ma: MsgArenaPtr): ptr array[msgArenaSize, MsgPtr] =
   result = ma.msgArray
 
 # public procs
-
-proc `$`*(msg: MsgPtr): string =
-  result = if msg == nil: "<nil>" else: "{msg:0x" &
-        toHex(cast[int](msg), sizeof(int)*2) &
-        (if msg.next == nil: " next=<nil>" else:
-          " next=0x" & toHex(cast[int](msg.next), sizeof(int)*2)) &
-        " cmd=" & $msg.cmd & "}"
 
 proc `$`*(ma: MsgArenaPtr): string =
   if ma == nil:
@@ -103,5 +90,7 @@ proc retMsg*(ma: MsgArenaPtr, msg: MsgPtr) =
       msgA[ma.msgCount] = msg
       ma.msgCount += 1
     else:
-      doAssert(ma.msgCount < msgA[].len())
+      # TODO: be sure to free or recycle the data in the future!
+      freeShared(msg)
+      
   ma.lock.release()
