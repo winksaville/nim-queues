@@ -4,8 +4,8 @@
 import msg, msgarena, msgqueue, benchmark
 
 
-# Having the warmup between 0 .. 0.25 seems to work best.
-# With a warmup of 1.0 the min was 258cy!
+# Having the warmup between 0 .. 0.25 seems to work best,
+# at 133cy.  With a warmup of 1.0 the min was 147cy!
 suite "bm msgareana", 0.25:
   var
     ma: MsgArenaPtr
@@ -13,25 +13,18 @@ suite "bm msgareana", 0.25:
     msg: MsgPtr
     tsa: array[0..4, TestStats]
 
-  # For some reason doing this newMsgArena gives
-  # more consistent results. A minimum of 244cy
-  # and "good minC" at 253cy very consistently
-  # when running tests/t1. Not doing this I see
-  # min's of 259..262cy and 277cy with a "good
-  # minC". This maybe related to the fact that
-  # newMsgArena warms up the caches better as
-  # it does some allocShared0 call
-  discard newMsgArena()
+  #No difference in timing consistently 133cy
+  #discard newMsgArena()
 
   setup:
     ma = newMsgArena()
     mq = newMsgQueue("mq")
+    msg = ma.getMsg(1, 0)
   teardown:
     mq.delMsgQueue()
     ma.delMsgArena()
+    ma.retMsg(msg)
 
   test "test1", 1.0, tsa:
-    msg = ma.getMsg(1, 0)
     mq.addTail(msg)
     msg = mq.rmvHead()
-    ma.retMsg(msg)
