@@ -1,7 +1,10 @@
 import nake
 
+#cao.parseArgsOpts()
+
 var
-  buildArtifacts = @["nimcache", "tests/nimcache", "tests/t1", "tests/t2"]
+  buildArtifacts = @["nimcache", "tests/nimcache", "tests/t1", "tests/t2", "tests/t3", "tests/t4",
+    "tests/t5"]
   buildFlags = "-d:release --verbosity:1 --hints:off --warnings:off --threads:on --embedsrc --lineDir:on"
   #buildFlags = "-d:release --verbosity:3 --hints:off --warnings:on --threads:on --embedsrc --lineDir:on --parallelBuild:1"
 
@@ -63,6 +66,15 @@ task "build-t4", "Build t4":
 task "run-t4", "Run t4":
   runNim("tests/t4")
 
+task "t5", "Clean, Compile and run the tests":
+  fullCompileRun("tests/t5")
+
+task "build-t5", "Build t5":
+  compileNim("tests/t5")
+
+task "run-t5", "Run t5":
+  runNim("tests/t5")
+
 
 task "docs", "Buiild the documents":
   for file in docFiles:
@@ -76,7 +88,7 @@ task "exmpl", "Build and run the exmpl":
     runNim(file)
 
 task "clean", "clean build artifacts":
-  proc removeFileOrDir(file) =
+  proc removeFileOrDir(file: string) =
     try:
       removeFile(file)
     except OSError:

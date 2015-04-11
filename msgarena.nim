@@ -17,7 +17,6 @@ type
 
 proc `$`*(ma: MsgArenaPtr): string
 
-
 # private procs
 
 proc newMsg(cmdVal: int32, dataSize: int): MsgPtr =
@@ -26,6 +25,11 @@ proc newMsg(cmdVal: int32, dataSize: int): MsgPtr =
   result = cast[MsgPtr](allocShared(sizeof(Msg)))
   result.cmd = cmdVal
   result.next = nil
+
+proc delMsg*(msg: MsgPtr) =
+  ## Deallocate a msg
+  ## TODO: handle data size
+  freeShared(msg)
 
 proc getMsgArrayPtr(ma: MsgArenaPtr): ptr array[msgArenaSize, MsgPtr] =
   ## Assume ma.lock is acquired
@@ -64,7 +68,7 @@ proc delMsgArena*(ma: MsgArenaPtr) =
     if ma.msgArray != nil:
       for idx in 0..ma.msgCount-1:
         var msg = ma.msgArray[idx]
-        deallocShared(msg)
+        delMsg(msg)
       deallocShared(ma.msgArray)
   ma.lock.release()
   ma.lock.deinitLock()
@@ -90,7 +94,6 @@ proc retMsg*(ma: MsgArenaPtr, msg: MsgPtr) =
       msgA[ma.msgCount] = msg
       ma.msgCount += 1
     else:
-      # TODO: be sure to free or recycle the data in the future!
-      freeShared(msg)
+      delMsg(msg)
       
   ma.lock.release()
