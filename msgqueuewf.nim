@@ -8,9 +8,6 @@ const DBG = false
 type
   MsgQueue* = object of Queue
     name*: string
-    ownsCondAndLock*: bool
-    cond*: ptr TCond
-    lock*: ptr TLock
     stubArena: MsgArenaPtr
     head*: MsgPtr
     tail*: MsgPtr
@@ -26,43 +23,28 @@ proc `$`*(mq: MsgQueuePtr): string =
         " tail=" & $mq.tail &
       "}"
 
-# Forward declaration
-proc emptyNoLock*(mq: MsgQueuePtr): bool {.inline.}
+proc isEmpty(mq: MsgQueuePtr): bool {.inline.} =
+  var head = mq.head
+  var next = atomicLoadN(addr head.next, ATOMIC_ACQUIRE)
+  result = next == nil
 
-proc newMsgQueue*(name: string, cond: ptr TCond, lock: ptr TLock, stub: MsgPtr): MsgQueuePtr =
-  ## Create a new MsgQueue passing the initialized condition and lock
+proc newMsgQueue*(name: string, stub: MsgPtr): MsgQueuePtr =
+  ## Create a new MsgQueue
   var mq = cast[MsgQueuePtr](allocShared(sizeof(MsgQueue)))
-  proc dbg(s:string) =
-    echo name & ".newMsgQueue(name,cond,lock,stub):" & s
+  proc dbg(s:string) = echo name & ".newMsgQueue(name,stub):" & s
   when DBG: dbg "+"
   mq.name = name
-  mq.ownsCondAndLock = false
-  mq.cond = cond
-  mq.lock = lock
   stub.next = nil
   mq.head = stub
   mq.tail = stub
   result = cast[MsgQueuePtr](mq)
   when DBG: dbg "-"
 
-proc newMsgQueue*(name: string, stub: MsgPtr): MsgQueuePtr =
-  proc dbg(s:string) =
-    echo name & ".newMsgQueue(name,stub):" & s
+proc delMsgQueue*(qp: QueuePtr) =
+  var mq = cast[MsgQueuePtr](qp)
+  proc dbg(s:string) = echo mq.name & ".delMsgQueue:" & s
   when DBG: dbg "+"
-  var
-    cond = cast[ptr TCond](allocShared(sizeof(TCond)))
-    lock = cast[ptr TLock](allocShared(sizeof(TLock)))
-  cond[].initCond()
-  lock[].initLock()
-  result = newMsgQueue(name, cond, lock, stub)
-  result.ownsCondAndLock = true
-  when DBG: dbg "-"
-
-proc delMsgQueue*(mq: MsgQueuePtr) =
-  proc dbg(s:string) =
-    echo mq.name & ".delMsgQueue:" & s
-  when DBG: dbg "+"
-  doAssert(mq.emptyNoLock())
+  doAssert(mq.isEmpty())
   delMsg(mq.head)
   mq.head = nil
   mq.tail = nil
@@ -70,60 +52,32 @@ proc delMsgQueue*(mq: MsgQueuePtr) =
   deallocShared(mq)
   when DBG: dbg "-"
 
-proc delMsgQueue*(qp: QueuePtr) =
-  delMsgQueue(cast[MsgQueuePtr](qp))
+proc addTail*(q: QueuePtr, msg: MsgPtr): bool =
+  ## Add msg to tail if this was added to an
+  ## empty queue return true
+  var mq = cast[MsgQueuePtr](q)
+  proc dbg(s:string) = echo mq.name & ".addTail:" & s
+  when DBG: dbg "+ msg=" & $msg
+  msg.next = nil;
+  # serialization-piont wrt to the single consumer, acquire-release
+  var prevTail = atomicExchangeN(addr mq.tail, msg, ATOMIC_ACQ_REL)
+  atomicStoreN(addr prevTail.next, msg, ATOMIC_RELEASE)
+  result = prevTail == nil
+  when DBG: echo "mq=", mq
+  when DBG: dbg "- msg=" & $msg
 
-proc emptyNoLock*(mq: MsgQueuePtr): bool =
-  proc dbg(s:string) =
-    echo mq.name & ".emptyNoLock:" & s
-  when DBG: dbg "+"
-  ## Assume a lock is held outside
-  ## TODO: NOT atomic
-  result = mq.head == mq.tail
-  when DBG: dbg "- " & $result
-
-proc rmvHeadNonBlockingNoLock*(mq: MsgQueuePtr): MsgPtr =
+proc rmvHeadNonBlocking*(q: QueuePtr): MsgPtr =
   ## Return head or nil if empty
-  proc dbg(s:string) =
-    echo mq.name & ".rmvHeadNonBlockingNoLock:" & s
+  ## May only be called from consumer
+  var mq = cast[MsgQueuePtr](q)
+  proc dbg(s:string) = echo mq.name & ".rmvHeadNonBlocking:" & s
   when DBG: dbg "+"
   result = mq.head
-  var next = atomicLoadN(addr result.next, ATOMIC_ACQUIRE) # serialization-point wrt producers, acquire
+  # serialization-point wrt producers, acquire
+  var next = atomicLoadN(addr result.next, ATOMIC_ACQUIRE)
   if next != nil:
     mq.head = next
   else:
     result = nil
   when DBG: echo "mq=", mq
   when DBG: dbg "- msg=" & $result
-
-proc addTail*(q: QueuePtr, msg: MsgPtr) =
-  var mq = cast[MsgQueuePtr](q)
-  proc dbg(s:string) =
-    echo mq.name & ".addTail:" & s
-  when DBG: dbg "+ msg=" & $msg
-  msg.next = nil;
-  var prev = atomicExchangeN(addr mq.tail, msg, ATOMIC_ACQ_REL)
-  atomicStoreN(addr prev.next, msg, ATOMIC_RELEASE)
-  when DBG: echo "mq=", mq
-  when DBG: dbg "- msg=" & $msg
-
-proc rmvHead*(q: QueuePtr): MsgPtr =
-  var mq = cast[MsgQueuePtr](q)
-  proc dbg(s:string) =
-    echo mq.name & ".rmvHead:" & s
-  when DBG: dbg "+"
-  result = mq.rmvHeadNonBlockingNoLock()
-  if result == nil:
-    mq.lock[].acquire()
-    block:
-      while emptyNoLock(mq):
-        when DBG: dbg "waiting"
-        mq.cond[].wait(mq.lock[])
-      when DBG: dbg "going"
-      result = mq.rmvHeadNonBlockingNoLock()
-    mq.lock[].release()
-  when DBG: echo "mq=", mq
-  when DBG: dbg "- msg=" & $result
-
-proc rmvHeadNonBlocking*(mq: MsgQueuePtr): MsgPtr =
-  result = rmvHeadNonBlockingNoLock(mq)

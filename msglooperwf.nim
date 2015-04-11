@@ -15,7 +15,7 @@ type
 
   MsgProcessorPtr* = ptr MsgProcessor
   MsgProcessor* = object
-    mq: MsgQueuePtr
+    mq: QueuePtr
     pm: ProcessMsg
 
   MsgLooperPtr* = ptr MsgLooper
@@ -72,7 +72,7 @@ proc looper(ml: MsgLooperPtr) =
     var processedAtLeastOneMsg = false
     for idx in 0..ml.listMsgProcessorLen-1:
       var mp = ml.listMsgProcessor[idx]
-      var msg = mp.mq.rmvHeadNonBlockingNoLock()
+      var msg = mp.mq.rmvHeadNonBlocking()
       if msg != nil:
         processedAtLeastOneMsg = true
         when DBG: dbg "processing msg=" & $msg

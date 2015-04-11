@@ -30,5 +30,5 @@ suite "bm msgareanawf", 0.25:
     ma.delMsgArena()
 
   test "test1", 1.0, tsa:
-    mq.addTail(msg)
-    msg = mq.rmvHead()
+    discard mq.addTail(msg)
+    msg = mq.rmvHeadNonBlocking()
