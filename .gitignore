@@ -5,6 +5,7 @@ nimcache/
 
 # Full paths
 /nakefile
+/msgqueueniwf
 /tests/t1
 /tests/t2
 /tests/t3

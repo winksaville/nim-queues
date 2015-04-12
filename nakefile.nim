@@ -3,7 +3,7 @@ import nake
 #cao.parseArgsOpts()
 
 var
-  buildArtifacts = @["nimcache", "tests/nimcache", "tests/t1", "tests/t2", "tests/t3", "tests/t4",
+  buildArtifacts = @["nimcache", "msgqueueniwf", "tests/nimcache", "tests/t1", "tests/t2", "tests/t3", "tests/t4",
     "tests/t5"]
   buildFlags = "-d:release --verbosity:1 --hints:off --warnings:off --threads:on --embedsrc --lineDir:on"
   #buildFlags = "-d:release --verbosity:3 --hints:off --warnings:on --threads:on --embedsrc --lineDir:on --parallelBuild:1"
@@ -75,6 +75,9 @@ task "build-t5", "Build t5":
 task "run-t5", "Run t5":
   runNim("tests/t5")
 
+task "msgqueueniwf", "build, run msgqueueniwf":
+  compileNim("./msgqueueniwf")
+  runNim("./msgqueueniwf")
 
 task "docs", "Buiild the documents":
   for file in docFiles:
